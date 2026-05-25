@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Start stack
+        run: docker compose up --build -d
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for Flask..."
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:5000/metrics && break
+            echo "Attempt $i failed, retrying..."
+            sleep 3
+          done
+
+      - name: Generate traffic
+        run: |
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:5000/ > /dev/null
+            curl -sf http://localhost:5000/slow > /dev/null
+            curl -s http://localhost:5000/error > /dev/null
+          done
+
+      - name: Verify Flask metrics endpoint
+        run: |
+          curl -sf http://localhost:5000/metrics | grep flask_request_count_total
+
+      - name: Verify Prometheus is scraping Flask
+        run: |
+          sleep 20
+          curl -sf "http://localhost:9090/api/v1/query?query=up{job=\"flask-app\"}" \
+            | grep -q "\"value\":1" || \
+          curl -sf "http://localhost:9090/api/v1/query?query=up{job=\"flask-app\"}" \
+            | grep -q ""value":1"
+
+      - name: Verify Alertmanager is healthy
+        run: curl -sf http://localhost:9093/-/healthy
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
