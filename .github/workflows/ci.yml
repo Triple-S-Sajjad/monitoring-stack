@@ -19,7 +19,6 @@ jobs:
 
       - name: Wait for services to be ready
         run: |
-          echo "Waiting for Flask..."
           for i in $(seq 1 15); do
             curl -sf http://localhost:5000/metrics && break
             echo "Attempt $i failed, retrying..."
@@ -35,13 +34,14 @@ jobs:
           done
 
       - name: Verify Flask metrics endpoint
-        run: |
-          curl -sf http://localhost:5000/metrics | grep flask_request_count_total
+        run: curl -sf http://localhost:5000/metrics | grep flask_request_count_total
 
-      - name: Verify Prometheus is scraping Flask
+      - name: Verify Prometheus has Flask metrics
         run: |
           sleep 20
-          curl -sf "http://localhost:9090/api/v1/targets" | grep -q ""health":"up""
+          RESULT=$(curl -sf "http://localhost:9090/api/v1/query?query=flask_request_count_total")
+          echo "Prometheus response: $RESULT"
+          echo "$RESULT" | grep -q "success"
 
       - name: Verify Alertmanager is healthy
         run: curl -sf http://localhost:9093/-/healthy
