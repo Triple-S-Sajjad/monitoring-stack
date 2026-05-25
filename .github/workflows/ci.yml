@@ -41,10 +41,7 @@ jobs:
       - name: Verify Prometheus is scraping Flask
         run: |
           sleep 20
-          curl -sf "http://localhost:9090/api/v1/query?query=up{job=\"flask-app\"}" \
-            | grep -q "\"value\":1" || \
-          curl -sf "http://localhost:9090/api/v1/query?query=up{job=\"flask-app\"}" \
-            | grep -q ""value":1"
+          curl -sf "http://localhost:9090/api/v1/targets" | grep -q ""health":"up""
 
       - name: Verify Alertmanager is healthy
         run: curl -sf http://localhost:9093/-/healthy
