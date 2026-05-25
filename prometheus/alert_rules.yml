@@ -1,0 +1,24 @@
+groups:
+  - name: flask_alerts
+    rules:
+      - alert: HighErrorRate
+        expr: rate(flask_request_count_total{status="500"}[1m]) > 0.05
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate"
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(flask_request_latency_seconds_bucket[1m])) > 0.5
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "High p95 latency"
+      - alert: FlaskAppDown
+        expr: up{job="flask-app"} == 0
+        for: 15s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Flask app is down"
